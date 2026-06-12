@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timer & Pomodoro & Décompte</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-sec: #f5f5f4;
+    --text: #1a1a1a;
+    --text-sec: #6b7280;
+    --border: rgba(0,0,0,.12);
+    --border-em: rgba(0,0,0,.22);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --bg-sec: #2c2c2e;
+      --text: #f5f5f5;
+      --text-sec: #9ca3af;
+      --border: rgba(255,255,255,.12);
+      --border-em: rgba(255,255,255,.22);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: transparent;
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .wrap { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 1rem; }
+  .tabs { display: flex; gap: 5px; background: var(--bg-sec); border-radius: var(--radius); padding: 4px; }
+  .tab {
+    flex: 1; padding: 7px 8px; border: none; background: transparent;
+    border-radius: 9px; font-size: 12px; color: var(--text-sec); cursor: pointer;
+    transition: background .15s, color .15s; font-family: inherit;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+  }
+  .tab.active {
+    background: var(--bg); color: var(--text);
+    border: 0.5px solid var(--border); font-weight: 500;
+  }
+  .card {
+    background: var(--bg); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.75rem 1.5rem;
+    display: flex; flex-direction: column; align-items: center; gap: 1.25rem;
+  }
+  .display {
+    font-size: 56px; font-weight: 500; letter-spacing: -2px;
+    color: var(--text); font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .progress { width: 100%; height: 3px; background: var(--bg-sec); border-radius: 2px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--text); border-radius: 2px; transition: width .5s linear; }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .pill {
+    padding: 5px 12px; border: 0.5px solid var(--border); border-radius: 20px;
+    font-size: 12px; color: var(--text-sec); cursor: pointer; background: transparent;
+    font-family: inherit; transition: background .12s, color .12s;
+  }
+  .pill:hover { background: var(--bg-sec); color: var(--text); }
+  .controls { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+  .row { display: flex; gap: 8px; align-items: center; width: 100%; }
+  .row label { font-size: 13px; color: var(--text-sec); min-width: 78px; }
+  .row input {
+    flex: 1; padding: 8px 10px; border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--bg-sec); color: var(--text);
+    font-size: 14px; font-family: inherit; outline: none; transition: border-color .15s;
+  }
+  .row input:focus { border-color: var(--border-em); }
+  .btns { display: flex; gap: 8px; width: 100%; }
+  .btn {
+    flex: 1; padding: 10px 14px; border: 0.5px solid var(--border-em);
+    border-radius: var(--radius-sm); background: transparent; color: var(--text);
+    font-size: 14px; font-family: inherit; cursor: pointer;
+    transition: background .12s, transform .1s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn:hover { background: var(--bg-sec); }
+  .btn:active { transform: scale(.98); }
+  .btn.primary { background: var(--text); color: var(--bg); border-color: transparent; }
+  .btn.primary:hover { opacity: .85; }
+  .countdown-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; }
+  .cg-cell { background: var(--bg-sec); border-radius: var(--radius-sm); padding: 12px 6px; text-align: center; }
+  .cg-num { font-size: 28px; font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+  .cg-lbl { font-size: 11px; color: var(--text-sec); margin-top: 4px; }
+  .sub { font-size: 13px; color: var(--text-sec); text-align: center; line-height: 1.5; }
+  .section { display: none; flex-direction: column; align-items: center; gap: 1.25rem; width: 100%; }
+  .section.visible { display: flex; }
+  .phase-badge {
+    padding: 5px 16px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    transition: background .3s, color .3s;
+  }
+  .phase-work { background: var(--bg); border: 0.5px solid var(--border-em); color: var(--text); }
+  .phase-short { background: #e1f5ee; border: 0.5px solid #9fe1cb; color: #0f6e56; }
+  .phase-long  { background: #e6f1fb; border: 0.5px solid #b5d4f4; color: #185fa5; }
+  @media (prefers-color-scheme: dark) {
+    .phase-short { background: #04342c; border-color: #085041; color: #9fe1cb; }
+    .phase-long  { background: #042c53; border-color: #0c447c; color: #b5d4f4; }
+  }
+  .dots { display: flex; gap: 7px; align-items: center; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--bg-sec); border: 0.5px solid var(--border-em);
+    transition: background .3s;
+  }
+  .dot.done { background: var(--text); border-color: transparent; }
+  .dot.current { background: var(--text); opacity: .4; }
+  .pomo-settings {
+    display: flex; flex-direction: column; gap: 9px; width: 100%;
+    border-top: 0.5px solid var(--border); padding-top: 1rem;
+  }
+  .pomo-settings .row label { min-width: 140px; }
+  .settings-toggle {
+    font-size: 12px; color: var(--text-sec); cursor: pointer;
+    display: flex; align-items: center; gap: 4px;
+    background: none; border: none; font-family: inherit; padding: 0;
+  }
+  .settings-toggle:hover { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" id="tab-timer" onclick="switchTab('timer')"><i class="ti ti-player-play"></i> Timer</button>
+    <button class="tab" id="tab-pomo" onclick="switchTab('pomo')"><i class="ti ti-tomato"></i> Pomodoro</button>
+    <button class="tab" id="tab-date" onclick="switchTab('date')"><i class="ti ti-calendar"></i> Date</button>
+  </div>
+
+  <div class="card">
+
+    <!-- TIMER -->
+    <div class="section visible" id="sec-timer">
+      <div class="display" id="timer-disp">05:00</div>
+      <div class="progress" id="prog-wrap" style="display:none">
+        <div class="progress-bar" id="prog-bar" style="width:100%"></div>
+      </div>
+      <div class="pills">
+        <button class="pill" onclick="setPreset(300)">5 min</button>
+        <button class="pill" onclick="setPreset(600)">10 min</button>
+        <button class="pill" onclick="setPreset(1500)">25 min</button>
+        <button class="pill" onclick="setPreset(3600)">1 h</button>
+        <button class="pill" onclick="setPreset(5400)">1h30</button>
+      </div>
+      <div class="controls">
+        <div class="row"><label>Heures</label><input type="number" id="t-h" min="0" max="23" value="0" oninput="updateFromInputs()"></div>
+        <div class="row"><label>Minutes</label><input type="number" id="t-m" min="0" max="59" value="5" oninput="updateFromInputs()"></div>
+        <div class="row"><label>Secondes</label><input type="number" id="t-s" min="0" max="59" value="0" oninput="updateFromInputs()"></div>
+      </div>
+      <div class="btns">
+        <button class="btn primary" onclick="toggleTimer()">
+          <i class="ti ti-player-play" id="btn-icon"></i><span id="btn-lbl">Démarrer</span>
+        </button>
+        <button class="btn" onclick="resetTimer()"><i class="ti ti-refresh"></i> Reset</button>
+      </div>
+    </div>
+
+    <!-- POMODORO -->
+    <div class="section" id="sec-pomo">
+      <div class="phase-badge phase-work" id="pomo-badge">Travail</div>
+      <div class="display" id="pomo-disp">25:00</div>
+      <div class="progress">
+        <div class="progress-bar" id="pomo-bar" style="width:100%"></div>
+      </div>
+      <div class="dots" id="pomo-dots" aria-label="progression des sessions"></div>
+      <div class="btns">
+        <button class="btn primary" onclick="togglePomo()">
+          <i class="ti ti-player-play" id="pomo-btn-icon"></i><span id="pomo-btn-lbl">Démarrer</span>
+        </button>
+        <button class="btn" onclick="skipPomo()" title="Passer à la phase suivante">
+          <i class="ti ti-player-skip-forward"></i> Passer
+        </button>
+        <button class="btn" onclick="resetPomo()" title="Réinitialiser" style="flex:0;padding:10px 14px">
+          <i class="ti ti-refresh"></i>
+        </button>
+      </div>
+      <button class="settings-toggle" onclick="togglePomoSettings()">
+        <i class="ti ti-settings"></i> <span id="stgl-lbl">Réglages</span>
+      </button>
+      <div class="pomo-settings" id="pomo-settings" style="display:none">
+        <div class="row"><label>Travail (min)</label><input type="number" id="p-work" min="1" max="60" value="25" oninput="applyPomoSettings()"></div>
+        <div class="row"><label>Pause courte (min)</label><input type="number" id="p-short" min="1" max="30" value="5" oninput="applyPomoSettings()"></div>
+        <div class="row"><label>Pause longue (min)</label><input type="number" id="p-long" min="1" max="60" value="15" oninput="applyPomoSettings()"></div>
+        <div class="row"><label>Sessions / cycle</label><input type="number" id="p-sessions" min="2" max="8" value="4" oninput="applyPomoSettings()"></div>
+      </div>
+    </div>
+
+    <!-- DATE -->
+    <div class="section" id="sec-date">
+      <div class="controls">
+        <div class="row"><label>Objectif</label><input type="text" id="d-label" placeholder="Nom de l'événement" value="Mon objectif"></div>
+        <div class="row"><label>Date cible</label><input type="date" id="d-date"></div>
+      </div>
+      <div class="pills">
+        <button class="pill" onclick="addDays(7)">+7 j</button>
+        <button class="pill" onclick="addDays(14)">+14 j</button>
+        <button class="pill" onclick="addDays(30)">+30 j</button>
+        <button class="pill" onclick="addDays(90)">+90 j</button>
+        <button class="pill" onclick="addDays(365)">+1 an</button>
+      </div>
+      <div class="countdown-grid">
+        <div class="cg-cell"><div class="cg-num" id="cd-d">--</div><div class="cg-lbl">jours</div></div>
+        <div class="cg-cell"><div class="cg-num" id="cd-h">--</div><div class="cg-lbl">heures</div></div>
+        <div class="cg-cell"><div class="cg-num" id="cd-m">--</div><div class="cg-lbl">minutes</div></div>
+        <div class="cg-cell"><div class="cg-num" id="cd-s">--</div><div class="cg-lbl">secondes</div></div>
+      </div>
+      <div class="sub" id="cd-sub">Choisissez une date cible</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function pad(n) { return String(n).padStart(2, '0'); }
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
+  document.getElementById('tab-' + t).classList.add('active');
+  document.getElementById('sec-' + t).classList.add('visible');
+}
+function playBeep(freq) {
+  try {
+    const a = new AudioContext(), o = a.createOscillator(), g = a.createGain();
+    o.connect(g); g.connect(a.destination);
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.25, a.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + 0.9);
+    o.start(); o.stop(a.currentTime + 0.9);
+  } catch(e) {}
+}
+
+// ── TIMER ──
+let tInterval = null, tRem = 300, tTotal = 300, tRunning = false;
+function totalFromInputs() {
+  return (parseInt(document.getElementById('t-h').value) || 0) * 3600
+       + (parseInt(document.getElementById('t-m').value) || 0) * 60
+       + (parseInt(document.getElementById('t-s').value) || 0);
+}
+function updateFromInputs() { if (!tRunning) { tRem = totalFromInputs(); tTotal = tRem; renderTimer(); } }
+function renderTimer() {
+  const h = Math.floor(tRem / 3600), m = Math.floor((tRem % 3600) / 60), s = tRem % 60;
+  document.getElementById('timer-disp').textContent = h > 0 ? pad(h)+':'+pad(m)+':'+pad(s) : pad(m)+':'+pad(s);
+  if (tTotal > 0) document.getElementById('prog-bar').style.width = (tRem / tTotal * 100) + '%';
+}
+function setPreset(sec) { resetTimer(); tRem = sec; tTotal = sec; document.getElementById('t-h').value = Math.floor(sec/3600); document.getElementById('t-m').value = Math.floor((sec%3600)/60); document.getElementById('t-s').value = sec%60; renderTimer(); }
+function toggleTimer() { tRunning ? pauseTimer() : startTimer(); }
+function startTimer() {
+  if (tRem <= 0) { tRem = totalFromInputs(); tTotal = tRem; }
+  if (tRem <= 0) return;
+  tRunning = true;
+  document.getElementById('btn-lbl').textContent = 'Pause';
+  document.getElementById('btn-icon').className = 'ti ti-player-pause';
+  document.getElementById('prog-wrap').style.display = 'block';
+  tInterval = setInterval(() => {
+    tRem--; renderTimer();
+    if (tRem <= 0) {
+      clearInterval(tInterval); tRunning = false;
+      document.getElementById('btn-lbl').textContent = 'Démarrer';
+      document.getElementById('btn-icon').className = 'ti ti-player-play';
+      playBeep(880);
+    }
+  }, 1000);
+}
+function pauseTimer() { clearInterval(tInterval); tRunning = false; document.getElementById('btn-lbl').textContent = 'Reprendre'; document.getElementById('btn-icon').className = 'ti ti-player-play'; }
+function resetTimer() { clearInterval(tInterval); tRunning = false; tRem = totalFromInputs(); tTotal = tRem; document.getElementById('btn-lbl').textContent = 'Démarrer'; document.getElementById('btn-icon').className = 'ti ti-player-play'; document.getElementById('prog-wrap').style.display = 'none'; renderTimer(); }
+
+// ── POMODORO ──
+let pCfg = { work: 25, short: 5, long: 15, sessions: 4 };
+let pPhase = 'work', pSession = 0, pRem = 0, pTotal = 0, pRunning = false, pInterval = null;
+
+function pomoLabel() { return pPhase === 'work' ? 'Travail' : pPhase === 'short' ? 'Pause courte' : 'Pause longue'; }
+function pomoBadge() { return pPhase === 'work' ? 'phase-work' : pPhase === 'short' ? 'phase-short' : 'phase-long'; }
+function pomoMins() { return pPhase === 'work' ? pCfg.work : pPhase === 'short' ? pCfg.short : pCfg.long; }
+
+function renderPomo() {
+  document.getElementById('pomo-disp').textContent = pad(Math.floor(pRem / 60)) + ':' + pad(pRem % 60);
+  document.getElementById('pomo-bar').style.width = pTotal > 0 ? (pRem / pTotal * 100) + '%' : '100%';
+  const b = document.getElementById('pomo-badge');
+  b.textContent = pomoLabel(); b.className = 'phase-badge ' + pomoBadge();
+  const c = document.getElementById('pomo-dots'); c.innerHTML = '';
+  for (let i = 0; i < pCfg.sessions; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i < pSession ? ' done' : i === pSession && pPhase === 'work' ? ' current' : '');
+    c.appendChild(d);
+  }
+}
+
+function applyPomoSettings() {
+  pCfg.work = parseInt(document.getElementById('p-work').value) || 25;
+  pCfg.short = parseInt(document.getElementById('p-short').value) || 5;
+  pCfg.long = parseInt(document.getElementById('p-long').value) || 15;
+  pCfg.sessions = parseInt(document.getElementById('p-sessions').value) || 4;
+  if (!pRunning) resetPomo();
+}
+
+function togglePomo() { pRunning ? pausePomo() : startPomo(); }
+
+function startPomo() {
+  if (pRem <= 0) { pRem = pomoMins() * 60; pTotal = pRem; }
+  pRunning = true;
+  document.getElementById('pomo-btn-lbl').textContent = 'Pause';
+  document.getElementById('pomo-btn-icon').className = 'ti ti-player-pause';
+  pInterval = setInterval(() => {
+    pRem--; renderPomo();
+    if (pRem <= 0) { clearInterval(pInterval); pRunning = false; nextPhase(); }
+  }, 1000);
+}
+
+function pausePomo() {
+  clearInterval(pInterval); pRunning = false;
+  document.getElementById('pomo-btn-lbl').textContent = 'Reprendre';
+  document.getElementById('pomo-btn-icon').className = 'ti ti-player-play';
+}
+
+function nextPhase() {
+  if (pPhase === 'work') {
+    pSession++;
+    playBeep(660);
+    pPhase = pSession >= pCfg.sessions ? 'long' : 'short';
+    if (pSession >= pCfg.sessions) pSession = 0;
+  } else {
+    playBeep(440);
+    pPhase = 'work';
+  }
+  pRem = pomoMins() * 60; pTotal = pRem;
+  document.getElementById('pomo-btn-lbl').textContent = 'Démarrer';
+  document.getElementById('pomo-btn-icon').className = 'ti ti-player-play';
+  renderPomo();
+}
+
+function skipPomo() { clearInterval(pInterval); pRunning = false; nextPhase(); }
+function resetPomo() {
+  clearInterval(pInterval); pRunning = false;
+  pPhase = 'work'; pSession = 0; pRem = pCfg.work * 60; pTotal = pRem;
+  document.getElementById('pomo-btn-lbl').textContent = 'Démarrer';
+  document.getElementById('pomo-btn-icon').className = 'ti ti-player-play';
+  renderPomo();
+}
+
+function togglePomoSettings() {
+  const s = document.getElementById('pomo-settings'), open = s.style.display === 'none';
+  s.style.display = open ? 'flex' : 'none';
+  document.getElementById('stgl-lbl').textContent = open ? 'Masquer' : 'Réglages';
+}
+
+// ── DATE ──
+function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); document.getElementById('d-date').value = d.toISOString().split('T')[0]; updateCountdown(); }
+function updateCountdown() {
+  const v = document.getElementById('d-date').value, lbl = document.getElementById('d-label').value || 'Objectif';
+  if (!v) { document.getElementById('cd-sub').textContent = 'Choisissez une date cible'; return; }
+  const diff = new Date(v + 'T00:00:00') - new Date();
+  if (diff <= 0) { ['cd-d','cd-h','cd-m','cd-s'].forEach(id => document.getElementById(id).textContent = '0'); document.getElementById('cd-sub').textContent = "C'est arrivé !"; return; }
+  document.getElementById('cd-d').textContent = Math.floor(diff / 86400000);
+  document.getElementById('cd-h').textContent = pad(Math.floor((diff % 86400000) / 3600000));
+  document.getElementById('cd-m').textContent = pad(Math.floor((diff % 3600000) / 60000));
+  document.getElementById('cd-s').textContent = pad(Math.floor((diff % 60000) / 1000));
+  document.getElementById('cd-sub').textContent = lbl + ' · ' + new Date(v + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+document.getElementById('d-date').addEventListener('input', updateCountdown);
+document.getElementById('d-label').addEventListener('input', updateCountdown);
+
+const d15 = new Date(); d15.setDate(d15.getDate() + 15);
+document.getElementById('d-date').value = d15.toISOString().split('T')[0];
+updateCountdown();
+setInterval(updateCountdown, 1000);
+renderTimer();
+resetPomo();
+</script>
+</body>
+</html>
