@@ -352,7 +352,11 @@ function togglePomoSettings() {
 }
 
 // ── DATE ──
-function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); document.getElementById('d-date').value = d.toISOString().split('T')[0]; updateCountdown(); }
+function saveDate() {
+  localStorage.setItem('nt_label', document.getElementById('d-label').value);
+  localStorage.setItem('nt_date', document.getElementById('d-date').value);
+}
+function addDays(n) { const d = new Date(); d.setDate(d.getDate() + n); document.getElementById('d-date').value = d.toISOString().split('T')[0]; saveDate(); updateCountdown(); }
 function updateCountdown() {
   const v = document.getElementById('d-date').value, lbl = document.getElementById('d-label').value || 'Objectif';
   if (!v) { document.getElementById('cd-sub').textContent = 'Choisissez une date cible'; return; }
@@ -364,11 +368,14 @@ function updateCountdown() {
   document.getElementById('cd-s').textContent = pad(Math.floor((diff % 60000) / 1000));
   document.getElementById('cd-sub').textContent = lbl + ' · ' + new Date(v + 'T00:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 }
-document.getElementById('d-date').addEventListener('input', updateCountdown);
-document.getElementById('d-label').addEventListener('input', updateCountdown);
+document.getElementById('d-date').addEventListener('input', () => { saveDate(); updateCountdown(); });
+document.getElementById('d-label').addEventListener('input', () => { saveDate(); updateCountdown(); });
 
-const d15 = new Date(); d15.setDate(d15.getDate() + 15);
-document.getElementById('d-date').value = d15.toISOString().split('T')[0];
+const savedLabel = localStorage.getItem('nt_label');
+const savedDate  = localStorage.getItem('nt_date');
+if (savedLabel !== null) document.getElementById('d-label').value = savedLabel;
+if (savedDate)           { document.getElementById('d-date').value = savedDate; }
+else                     { const d15 = new Date(); d15.setDate(d15.getDate() + 15); document.getElementById('d-date').value = d15.toISOString().split('T')[0]; }
 updateCountdown();
 setInterval(updateCountdown, 1000);
 renderTimer();
